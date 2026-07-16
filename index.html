@@ -1085,9 +1085,7 @@
             else { if (!_downOnVan) exitInspect(); } // click off the van closes
         });
 
-        function animate() {
-            requestAnimationFrame(animate);
-
+        function updateSim() {
             // Honk wobble (inertial side-to-side) + floating music notes
             honkWobbleVel += (0 - honkWobble) * 0.12;
             honkWobbleVel *= 0.90;
@@ -1106,8 +1104,6 @@
                     vanModel.rotation.set(inspectPitch, inspectYaw, 0);      // drag pose (no honk on the whole van)
                     if (bodyTilt) bodyTilt.rotation.set(0, 0, honkWobble);  // honk wiggles the body only, not the wheels
                 }
-                cssRenderer.render(cssScene, camera);
-                renderer.render(scene, camera);
                 return;
             }
 
@@ -1452,6 +1448,29 @@
                 camera.lookAt(camera.position.x - cameraOffset.x, camera.position.y - cameraOffset.y, camera.position.z - cameraOffset.z);
             }
 
+        }
+
+        // --- Fixed-timestep loop: run physics at a steady 60 Hz regardless of the display refresh
+        //     rate or low-power/battery throttling, then render the current state once per frame.
+        //     This keeps the van driving at the same real-world speed for everyone (and stops it
+        //     running double-speed on 120 Hz screens). ---
+        let _lastFrame = performance.now();
+        let _simAccum = 0;
+        const _FIXED = 1000 / 60;                       // ms per simulation step (60 Hz)
+        function animate() {
+            requestAnimationFrame(animate);
+            const now = performance.now();
+            let elapsed = now - _lastFrame;
+            _lastFrame = now;
+            if (elapsed > 250) elapsed = 250;           // ignore huge gaps (e.g. tab was backgrounded)
+            _simAccum += elapsed;
+            let steps = 0;
+            while (_simAccum >= _FIXED && steps < 5) {   // catch up on missed time, capped to avoid a spiral
+                updateSim();
+                _simAccum -= _FIXED;
+                steps++;
+            }
+            if (steps >= 5) _simAccum = 0;               // too far behind: drop the backlog gracefully
             cssRenderer.render(cssScene, camera);
             renderer.render(scene, camera);
         }
