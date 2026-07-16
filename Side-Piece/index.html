@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Side Piece - Fried Chicken, Smash Burgers and More in Niseko" />
+    <title>Side Piece | Niseko</title>
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="type/Tondu-Beta.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="img/red-star.svg" as="image" />
+    <link rel="preload" href="img/made-to-order.svg" as="image" />
+    
+    <style>
+        :root {
+            --red: #cc323e;
+            --white: #ffffff;
+            --transition-speed: 0.3s;
+        }
+
+        @font-face {
+            font-family: 'Tondu';
+            src: url('type/Tondu-Beta.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap; /* Prevent FOUT */
+        }
+        
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: clamp(16px, 2vw + 12px, 36px);
+            background-color: var(--white);
+            font-family: Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            font-size: 1rem;
+            background-color: var(--white);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Loading state */
+        .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--red);
+            font-size: 0.4rem;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        
+        .loading-indicator.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: clamp(0.75rem, 2vw, 1.5rem) clamp(1.25rem, 4vw, 3rem) clamp(4rem, 6vw, 6rem);
+            gap: clamp(1.25rem, 4vw, 2.5rem);
+            width: min(1400px, 95vw);
+            margin: 0 auto;
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+        }
+        
+        .main-container.loaded {
+            opacity: 1;
+        }
+
+        .content-wrapper {
+            line-height: 1.6;
+            color: var(--red);
+            max-width: 1200px;
+            flex-shrink: 1;
+            z-index: 0;
+        }
+
+        .content-wrapper h2 {
+            font-size: clamp(1rem, 1.5vw + 0.7rem, 1.8rem);
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .content-wrapper p {
+            font-size: clamp(0.7rem, 1vw + 0.5rem, 0.9rem);
+            text-align: center;
+            margin: 0;
+            hyphens: none;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
+        .content-wrapper p a {
+            color: inherit;
+            -webkit-text-stroke: 0.06em var(--red);
+            text-stroke: 0.035em var(--red);
+        }
+
+        .content-and-canvas-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            gap: 2rem;
+            max-width: 1600px;
+        }
+
+        .stacked-text {
+            font-family: 'Tondu', sans-serif;
+            font-weight: bold;
+            font-size: clamp(2rem, 5vw, 4rem);
+            line-height: 1.2;
+            color: var(--red);
+            text-align: left;
+        }
+
+        .stacked-text span {
+            display: block;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: letter-spacing var(--transition-speed) ease,
+                        transform var(--transition-speed) ease;
+            will-change: transform;
+        }
+        
+        .stacked-text span:hover {
+            /* Use transform to simulate letter-spacing without layout shift */
+            transform: scale(1.02) translateX(0.1em);
+        }
+
+        noscript {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 1rem;
+            text-align: center;
+            background-color: var(--red);
+            color: var(--white);
+            z-index: 100;
+        }
+        
+        .canvas-wrapper {
+            position: fixed;
+            z-index: 1;
+            pointer-events: none;
+            top: 0;
+            left: 0;
+            will-change: transform; /* Optimize positioning */
+        }
+
+        #spinningStarCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #spinningStarCanvas2 {
+            width: 30vw;
+            height: 30vw;
+            display: block;
+            will-change: transform; /* Optimize canvas animations */
+        }
+
+        .map-container {
+            position: relative;
+            flex-shrink: 0;
+            width: min(100%, 1200px);
+            max-width: 90vw;
+            height: clamp(24rem, 85vw, 48rem);
+            z-index: 2;
+            margin-top: clamp(8rem, 12vw, 14rem);
+            border: clamp(0.32rem, 0.75vw, 1rem) dashed var(--red);
+        }
+        
+        .map-container iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+        }
+
+        .sp-stamp-svg {
+            width: 50rem;
+            max-width: 90vw;
+            height: auto;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .sp-tag-svg {
+            width: 40rem;
+            max-width: 90vw;
+            height: auto;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+            margin: 2rem 0 0;
+        }
+
+        .sp-tag-landscape {
+            display: none;
+        }
+
+        .sp-tag-portrait {
+            display: block;
+        }
+
+        @media (min-width: 1024px) {
+            .main-container {
+                padding: 2rem 4rem 5rem;
+                width: min(1600px, 94vw);
+            }
+            
+            .map-container {
+                margin-top: 2rem;
+                width: 700px;
+                height: clamp(18rem, 24vw, 24rem);
+            }
+            
+            .sp-tag-portrait {
+                display: none;
+            }
+            
+            .sp-tag-landscape {
+                display: block;
+                width: 16rem;
+            }
+            
+            .sp-stamp-svg {
+                width: 20rem;
+            }
+            
+            .content-wrapper {
+                max-width: none;
+                width: 100%;
+            }
+            
+            .canvas-wrapper {
+                display: none;
+            }
+        }
+
+        @media (max-width: 1023px) {
+            .main-container {
+                padding: clamp(0.75rem, 3vw, 1.5rem) clamp(1rem, 6vw, 2.5rem) clamp(4rem, 9vw, 6rem);
+                gap: clamp(1rem, 4vw, 2rem);
+            }
+            
+            #spinningStarCanvas2 {
+                display: none;
+            }
+            
+            .content-and-canvas-wrapper {
+                width: 100%;
+                justify-content: center;
+                flex-direction: column;
+            }
+            
+            .stacked-text {
+                font-size: clamp(2.5rem, 10vw, 4rem);
+                text-align: center;
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .map-container {
+                border-color: var(--white);
+                border-width: clamp(0.25rem, 1.5vw, 0.75rem);
+                margin-top: clamp(12rem, 32vw, 24rem);
+                height: clamp(22rem, 90vw, 36rem);
+            }
+
+            .content-wrapper p {
+                font-size: clamp(0.6rem, 1vw + 0.4rem, 0.8rem);
+            }
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            z-index: 10;
+            background-color: var(--red);
+        }
+        
+        .footer a {
+            font-family: Helvetica, sans-serif;
+            font-weight: bold;
+            font-size: clamp(1.05rem, 3vw, 1.5rem);
+            color: var(--white);
+            text-decoration: none;
+            transition: letter-spacing var(--transition-speed) ease;
+        }
+
+        .footer a:hover {
+            letter-spacing: 0.1em;
+        }
+
+        @media (max-width: 640px) {
+            html {
+                font-size: clamp(15px, 2vw + 11px, 22px);
+            }
+
+            .main-container {
+                padding: clamp(1rem, 6vw, 1.75rem) clamp(0.75rem, 6vw, 1.5rem) clamp(4rem, 11vw, 6rem);
+                gap: clamp(0.75rem, 5vw, 1.5rem);
+            }
+
+            .content-wrapper p {
+                margin: 0 auto;
+                max-width: 70ch;
+                font-size: clamp(0.5rem, 1vw + 0.3rem, 0.55rem);
+            }
+
+            .stacked-text {
+                gap: 0.25rem;
+                font-size: clamp(2rem, 9vw, 3.2rem);
+            }
+
+            .stacked-text span {
+                white-space: nowrap;
+                transform-origin: center;
+                /* transform: translateX(0); remove any lingering transform if needed */
+                text-align: center;
+            }
+
+            .stacked-text span:hover {
+                /* On smaller screens, just scale from the center */
+                transform: scale(1.05);
+            }
+
+            .map-container {
+                max-width: 94vw;
+            }
+
+            .footer {
+                gap: 1.25rem;
+                padding: 0.75rem 1rem 1rem;
+                height: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-indicator" id="loadingIndicator">SMASHING...</div>
+    
+    <main class="main-container" id="mainContainer">
+        <img src="img/SP_STAMP.svg" alt="Side Piece Stamp" class="sp-stamp-svg">
+
+        <div class="content-wrapper">
+            <p>The home of smash burgers and fried chicken in Niseko.<br>Est 2025 as the “Side Piece” to <a href="https://magicmountainbar.com/" target="_blank" rel="noopener noreferrer">Magic Mountain Bar</a>.<br><br>Weekends - 3pm ’til sold out.</p>
+        </div>
+
+        <div class="content-and-canvas-wrapper">
+            <div class="stacked-text" role="list" aria-label="Menu items">
+                <span role="listitem" data-image="0">FRIED CHICKEN</span>
+                <span role="listitem" data-image="1">SMASH BURGERS</span>
+                <span role="listitem" data-image="2">AND MORE . . .</span>
+            </div>
+            <canvas id="spinningStarCanvas2" aria-hidden="true"></canvas>
+        </div>
+
+        <div class="map-container">
+            <iframe
+                title="Side Piece on Google Maps"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2924.685722949287!2d140.7047585761351!3d42.85836877115097!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x5f0ab17f0bfa8327%3A0xa0afedda6171d4b8!2sSide%20Piece!5e0!3m2!1sen!2sjp!4v1763367220248!5m2!1sen!2sjp"
+                allowfullscreen=""
+                referrerpolicy="no-referrer-when-downgrade"
+            ></iframe>
+        </div>
+
+        <img src="img/SP_TAG.svg" alt="Side Piece Tag" class="sp-tag-svg sp-tag-portrait">
+        <img src="img/SP_TAG-red.svg" alt="Side Piece Tag" class="sp-tag-svg sp-tag-landscape">
+    </main>
+
+    <footer class="footer">
+        <a href="https://www.instagram.com/sidepiece.niseko/" target="_blank" rel="noopener noreferrer">INSTAGRAM</a>
+        <a href="https://www.facebook.com/p/SIDE-PIECE-61572041270089/" target="_blank" rel="noopener noreferrer">METABOOK</a>
+    </footer>
+
+    <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="spinningStarCanvas" aria-hidden="true"></canvas>
+    </div>
+
+    <noscript>Please enable JavaScript to view the animation.</noscript>
+
+    <script>
+        // Utility: Debounce function to limit expensive operations
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Asset loader with promise-based loading
+        class AssetLoader {
+            constructor() {
+                this.images = {};
+                this.totalAssets = 0;
+                this.loadedAssets = 0;
+            }
+
+            loadImage(key, src) {
+                this.totalAssets++;
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.images[key] = img;
+                        this.loadedAssets++;
+                        resolve(img);
+                    };
+                    img.onerror = reject;
+                    img.src = src;
+                });
+            }
+
+            async loadAll(imageMap) {
+                const promises = Object.entries(imageMap).map(([key, src]) => 
+                    this.loadImage(key, src)
+                );
+                await Promise.all(promises);
+                return this.images;
+            }
+
+            get(key) {
+                return this.images[key];
+            }
+        }
+
+        // Optimized Star Spinner with render-on-demand
+        class StarSpinner {
+            constructor(canvas, options = {}) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d', { alpha: true });
+                this.drawFunction = options.drawFunction;
+                this.setupFunction = options.setupFunction;
+                this.rotation = 0;
+                this.lastTime = 0;
+                this.ROTATION_SPEED = options.rotationSpeed || 0.0004;
+                this.needsRedraw = true;
+                this.isVisible = true;
+
+                this.animateLoop = this.animateLoop.bind(this);
+                this.setupCanvas = this.setupCanvas.bind(this);
+                this.debouncedSetup = debounce(this.setupCanvas, 150);
+            }
+
+            setupCanvas() {
+                if (!this.canvas.offsetParent) {
+                    this.isVisible = false;
+                    return;
+                }
+                this.isVisible = true;
+
+                if (this.setupFunction) {
+                    this.setupFunction(this.canvas, this.ctx);
+                } else {
+                    const dpr = window.devicePixelRatio || 1;
+                    const clientW = this.canvas.clientWidth;
+                    const clientH = this.canvas.clientHeight;
+                    this.canvas.width = clientW * dpr;
+                    this.canvas.height = clientH * dpr;
+                    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                }
+                this.needsRedraw = true;
+            }
+
+            draw() {
+                if (!this.needsRedraw || !this.isVisible) return;
+                
+                if (this.drawFunction) {
+                    this.drawFunction(this.canvas, this.ctx, this.rotation, assetLoader.images);
+                } else {
+                    const w = this.canvas.clientWidth;
+                    const h = this.canvas.clientHeight;
+                    this.ctx.clearRect(0, 0, w, h);
+
+                    const drawSize = w * 0.8;
+                    const centerX = w / 2;
+                    const centerY = h / 2;
+
+                    this.ctx.save();
+                    this.ctx.translate(centerX, centerY);
+                    this.ctx.rotate(this.rotation);
+                    this.ctx.drawImage(assetLoader.get('star'), -(drawSize / 2), -(drawSize / 2), drawSize, drawSize);
+                    this.ctx.restore();
+                }
+            }
+
+            animateLoop(timestamp) {
+                if (this.lastTime) {
+                    const elapsed = timestamp - this.lastTime;
+                    this.rotation += elapsed * this.ROTATION_SPEED;
+                    this.rotation %= 2 * Math.PI;
+                    this.needsRedraw = true;
+                }
+                this.lastTime = timestamp;
+
+                this.draw();
+                requestAnimationFrame(this.animateLoop);
+            }
+
+            initialize() {
+                this.setupCanvas();
+                window.addEventListener('resize', this.debouncedSetup);
+                if (this.canvas.id === 'spinningStarCanvas') {
+                    // Update position immediately on scroll, no debounce
+                    window.addEventListener('scroll', () => {
+                        this.setupCanvas();
+                    }, { passive: true });
+                }
+                requestAnimationFrame(this.animateLoop);
+            }
+        }
+
+        // Main canvas setup and draw functions
+        const mapContainer = document.querySelector('.map-container');
+        let cachedRedColor = null;
+        const footer = document.querySelector('.footer');
+
+        function mainCanvasSetup(canvas, ctx) {
+            const wrapper = canvas.parentElement;
+            const mapRect = mapContainer.getBoundingClientRect();
+            const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize); // e.g., 16px
+            const verticalOffset = 10 * rootFontSize;
+            const pageHeight = document.documentElement.scrollHeight;
+            const canvasWidth = document.documentElement.clientWidth;
+            const canvasTop = mapRect.top - verticalOffset;
+
+            wrapper.style.top = `${canvasTop}px`;
+            wrapper.style.left = '0px';
+            wrapper.style.width = `${canvasWidth}px`;
+            const footerHeight = footer.offsetHeight;
+            wrapper.style.height = `${pageHeight - canvasTop - footerHeight}px`;
+
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvasWidth * dpr;
+            canvas.height = (pageHeight - canvasTop - footerHeight) * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function mainCanvasDraw(canvas, ctx, rotation, images) {
+            const clientW = canvas.clientWidth;
+            const clientH = canvas.clientHeight;
+            ctx.clearRect(0, 0, clientW, clientH);
+
+            const starDrawSize = clientW * 1.5;
+            const starCenterY = starDrawSize / 2 + 10; // Offset star slightly downward
+
+            if (!cachedRedColor) {
+                cachedRedColor = getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+            }
+            ctx.fillStyle = cachedRedColor;
+            ctx.fillRect(0, starCenterY, clientW, clientH - starCenterY);
+
+            const centerX = clientW / 2;
+            ctx.save();
+            ctx.translate(centerX, starCenterY);
+            ctx.rotate(rotation);
+            ctx.drawImage(images.star, -(starDrawSize / 2), -(starDrawSize / 2), starDrawSize, starDrawSize);
+            ctx.restore();
+        }
+
+        // Side canvas with matte effect
+        let currentStarScale = 1.0;
+        let targetStarScale = 1.0;
+        let activeBgImgIndex = -1;
+
+        function sideCanvasDraw(canvas, ctx, rotation, images) {
+            const dpr = window.devicePixelRatio || 1;
+            const clientW = canvas.clientWidth;
+            const clientH = canvas.clientHeight;
+
+            currentStarScale += (targetStarScale - currentStarScale) * 0.2;
+
+            const baseDrawSize = clientW / 1.2;
+            const drawSize = baseDrawSize * currentStarScale;
+            const centerX = clientW / 2;
+            const centerY = clientH / 2;
+
+            ctx.clearRect(0, 0, clientW, clientH);
+            
+            if (activeBgImgIndex !== -1) {
+                ctx.save();
+                const bgImg = images[`bg${activeBgImgIndex}`];
+                if (bgImg) {
+                    ctx.drawImage(bgImg, 0, 0, clientW, clientH);
+                }
+                ctx.globalCompositeOperation = 'destination-in';
+                ctx.translate(centerX, centerY);
+                ctx.rotate(rotation);
+                ctx.drawImage(images.star, -(drawSize / 2), -(drawSize / 2), drawSize, drawSize);
+                ctx.restore();
+            } else {
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(rotation);
+                ctx.drawImage(images.star, -(drawSize / 2), -(drawSize / 2), drawSize, drawSize);
+                ctx.restore();
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.drawImage(images.madeToOrder, -(drawSize / 2), -(drawSize / 2), drawSize, drawSize);
+                ctx.restore();
+            }
+        }
+
+        // Initialize everything
+        const assetLoader = new AssetLoader();
+        let mainSpinner, sideSpinner;
+
+        async function init() {
+            try {
+                // Load all assets
+                await assetLoader.loadAll({
+                star: 'img/red-star.svg',
+                madeToOrder: 'img/made-to-order.svg',
+                bg0: 'img/webimg1.png',
+                bg1: 'img/webimg2.png',
+                bg2: 'img/webimg3.png'
+                });
+
+                // Hide loading indicator
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('mainContainer').classList.add('loaded');
+
+                // Initialize canvases
+                const mainCanvas = document.getElementById('spinningStarCanvas');
+                mainSpinner = new StarSpinner(mainCanvas, {
+                    setupFunction: mainCanvasSetup,
+                    drawFunction: mainCanvasDraw
+                });
+                mainSpinner.initialize();
+
+                const sideCanvas = document.getElementById('spinningStarCanvas2');
+                sideSpinner = new StarSpinner(sideCanvas, {
+                    rotationSpeed: -0.0005,
+                    drawFunction: sideCanvasDraw
+                });
+                sideSpinner.initialize();
+
+                // Setup hover interactions
+                const textSpans = document.querySelectorAll('.stacked-text span');
+                textSpans.forEach(span => {
+                    const imageIndex = parseInt(span.dataset.image, 10);
+                    
+                    span.addEventListener('mouseenter', () => {
+                        targetStarScale = 1.2;
+                        activeBgImgIndex = imageIndex;
+                        if (sideSpinner) sideSpinner.needsRedraw = true;
+                    });
+                    
+                    span.addEventListener('mouseleave', () => {
+                        targetStarScale = 1.0;
+                        activeBgImgIndex = -1;
+                        if (sideSpinner) sideSpinner.needsRedraw = true;
+                    });
+                });
+
+            } catch (error) {
+                console.error('Failed to load assets:', error);
+                document.getElementById('loadingIndicator').textContent = 'Failed to load. Please refresh.';
+            }
+        }
+
+        // Start initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
